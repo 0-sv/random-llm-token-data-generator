@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token Test Data Generator</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f7fa;
+      color: #333;
+    }
+
+    .container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .model-selector {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .model-button {
+      flex: 1;
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      background-color: #fff;
+      cursor: pointer;
+      font-weight: bold;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .model-button.active {
+      border-color: #3498db;
+      background-color: #ebf5fd;
+      color: #2980b9;
+    }
+
+    .slider-container {
+      margin-bottom: 20px;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-weight: 500;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .token-display {
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+
+    .output-area {
+      width: 100%;
+      min-height: 200px;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      font-family: monospace;
+      margin-bottom: 15px;
+      background-color: #fff;
+      resize: vertical;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 6px;
+      background-color: #3498db;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      flex: 1;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    .info-text {
+      font-size: 14px;
+      color: #7f8c8d;
+      margin-top: 15px;
+    }
+
+    .copy-success {
+      background-color: #27ae60;
+      color: white;
+      text-align: center;
+      padding: 8px;
+      border-radius: 4px;
+      margin-top: 10px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .copy-success.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Token Test Data Generator</h1>
+
+    <div class="card">
+      <h3>Select Token Model</h3>
+      <div class="model-selector">
+        <div class="model-button active" id="gpt4o">GPT-4o</div>
+        <div class="model-button" id="claude">Claude</div>
+      </div>
+
+      <div class="slider-container">
+        <h3>Token Amount</h3>
+        <div class="slider-label">
+          <span>1</span>
+          <span>128K</span>
+        </div>
+        <input type="range" id="token-slider" min="0" max="17" value="8">
+        <div class="token-display" id="token-value">4,096 tokens</div>
+      </div>
+
+      <h3>Generated Text</h3>
+      <textarea class="output-area" id="output-text" readonly></textarea>
+
+      <div class="button-row">
+        <button id="generate-btn">Generate New Data</button>
+        <button id="copy-btn">Copy to Clipboard</button>
+      </div>
+
+      <div class="copy-success" id="copy-notification">Copied to clipboard!</div>
+
+      <p class="info-text">Note: The generated text is optimized for token count. GPT-4o and Claude tokenize text
+        slightly differently, so approximate token counts are used.</p>
+    </div>
+  </div>
+
+  <script>
+    // Token increments in powers of 2
+    const tokenValues = [
+      1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
+      16384, 32768, 65536, 131072
+    ];
+
+    let currentModel = 'gpt4o';
+
+    // Get DOM elements
+    const tokenSlider = document.getElementById('token-slider');
+    const tokenValue = document.getElementById('token-value');
+    const outputText = document.getElementById('output-text');
+    const generateBtn = document.getElementById('generate-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const gpt4oButton = document.getElementById('gpt4o');
+    const claudeButton = document.getElementById('claude');
+    const copyNotification = document.getElementById('copy-notification');
+
+    // Common English words (shorter words use fewer tokens)
+    const commonWords = [
+      'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'I',
+      'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at',
+      'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
+      'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what',
+      'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me',
+      'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know', 'take',
+      'into', 'year', 'your', 'good', 'some', 'see', 'other', 'than', 'then', 'now',
+      'look', 'only', 'come', 'its', 'over', 'think', 'also', 'back', 'after', 'use',
+      'two', 'how', 'our', 'work', 'first', 'well', 'way', 'even', 'new', 'want'
+    ];
+
+    // Format numbers with commas
+    function formatNumber(num) {
+      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    // Generate random text based on token count
+    function generateRandomText(tokens) {
+      // Approximate characters per token based on model
+      // GPT-4 and Claude use roughly 4-5 characters per token
+      const charsPerToken = currentModel === 'gpt4o' ? 4 : 4.5;
+
+      // Calculate approximate character count needed
+      const targetChars = tokens * charsPerToken;
+
+      let result = '';
+      let currentChars = 0;
+
+      while (currentChars < targetChars) {
+        // Add a random word
+        const word = commonWords[Math.floor(Math.random() * commonWords.length)];
+
+        // Add space between words except at beginning
+        if (result.length > 0) {
+          result += ' ';
+          currentChars += 1;
+        }
+
+        result += word;
+        currentChars += word.length;
+
+        // Add some punctuation occasionally
+        if (Math.random() < 0.1) {
+          const punctuation = ['.', ',', '?', '!'][Math.floor(Math.random() * 4)];
+          result += punctuation;
+          currentChars += 1;
+
+          // Add paragraph breaks occasionally after periods
+          if (punctuation === '.' && Math.random() < 0.2) {
+            result += '\n\n';
+            currentChars += 2;
+          }
+        }
+      }
+
+      return result;
+    }
+
+    // Update token display
+    function updateTokenDisplay() {
+      const tokens = tokenValues[tokenSlider.value];
+      tokenValue.textContent = `${formatNumber(tokens)} tokens`;
+    }
+
+    // Generate new text
+    function generateText() {
+      const tokens = tokenValues[tokenSlider.value];
+      const text = generateRandomText(tokens);
+      outputText.value = text;
+    }
+
+    // Copy text to clipboard
+    function copyToClipboard() {
+      outputText.select();
+      document.execCommand('copy');
+
+      // Show success notification
+      copyNotification.classList.add('visible');
+      setTimeout(() => {
+        copyNotification.classList.remove('visible');
+      }, 2000);
+    }
+
+    // Event listeners
+    tokenSlider.addEventListener('input', updateTokenDisplay);
+    generateBtn.addEventListener('click', generateText);
+    copyBtn.addEventListener('click', copyToClipboard);
+
+    gpt4oButton.addEventListener('click', function () {
+      currentModel = 'gpt4o';
+      gpt4oButton.classList.add('active');
+      claudeButton.classList.remove('active');
+    });
+
+    claudeButton.addEventListener('click', function () {
+      currentModel = 'claude';
+      claudeButton.classList.add('active');
+      gpt4oButton.classList.remove('active');
+    });
+
+    // Initialize with default values
+    updateTokenDisplay();
+    generateText();
+  </script>
+</body>
+
+</html>
